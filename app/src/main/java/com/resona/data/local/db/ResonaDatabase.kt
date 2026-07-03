@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 import com.resona.data.local.dao.SongDao
 import com.resona.data.local.entity.SongEntity
 
-@Database(entities = [SongEntity::class], version = 1, exportSchema = false)
+@Database(entities = [SongEntity::class], version = 2, exportSchema = false)
 abstract class ResonaDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
 }

@@ -1,6 +1,7 @@
 package com.resona.data.local.entity
 
 import android.net.Uri
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.resona.domain.model.Song
@@ -13,7 +14,8 @@ data class SongEntity(
     val album: String,
     val duration: Long,
     val uri: String,
-    val albumArtUri: String?
+    val albumArtUri: String?,
+    @ColumnInfo(defaultValue = "0") val isManual: Boolean = false
 )
 
 fun SongEntity.toDomain() = Song(
@@ -26,12 +28,13 @@ fun SongEntity.toDomain() = Song(
     albumArtUri = albumArtUri?.let { Uri.parse(it) }
 )
 
-fun Song.toEntity() = SongEntity(
+fun Song.toEntity(isManual: Boolean = false) = SongEntity(
     id = id,
     title = title,
     artist = artist,
     album = album,
     duration = duration,
     uri = uri.toString(),
-    albumArtUri = albumArtUri?.toString()
+    albumArtUri = albumArtUri?.toString(),
+    isManual = isManual
 )

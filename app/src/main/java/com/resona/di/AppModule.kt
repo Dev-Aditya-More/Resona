@@ -18,7 +18,9 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): ResonaDatabase =
-        Room.databaseBuilder(context, ResonaDatabase::class.java, "resona.db").build()
+        Room.databaseBuilder(context, ResonaDatabase::class.java, "resona.db")
+            .fallbackToDestructiveMigration(true)
+            .build()
 
     @Provides
     fun provideSongDao(db: ResonaDatabase): SongDao = db.songDao()

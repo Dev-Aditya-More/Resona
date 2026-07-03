@@ -1,5 +1,8 @@
 package com.resona.navigation
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
@@ -29,6 +32,7 @@ import com.resona.presentation.library.LibraryViewModel
 import com.resona.presentation.player.PlayerScreen
 import com.resona.presentation.player.PlayerViewModel
 import com.resona.presentation.settings.SettingsScreen
+import com.resona.presentation.splash.SplashScreen
 
 private sealed class BottomTab(val route: String, val label: String, val icon: ImageVector) {
     object Home : BottomTab("home", "Home", Icons.Filled.Home)
@@ -44,13 +48,13 @@ fun NavGraph(playerViewModel: PlayerViewModel) {
     val currentRoute = backStackEntry?.destination?.route
     val playerState by playerViewModel.state.collectAsStateWithLifecycle()
 
-    val isOnPlayer = currentRoute == "player"
+    val showChrome = currentRoute == "home" || currentRoute == "settings"
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (!isOnPlayer) {
+            if (showChrome) {
                 Column {
                     if (playerState.currentSong != null) {
                         MiniPlayer(
@@ -70,8 +74,26 @@ fun NavGraph(playerViewModel: PlayerViewModel) {
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = "home",
+            startDestination = "splash",
+            enterTransition = { fadeIn(tween(300)) },
+            exitTransition = { fadeOut(tween(300)) },
+            popEnterTransition = { fadeIn(tween(300)) },
+            popExitTransition = { fadeOut(tween(300)) },
         ) {
+            // Splash — manages its own fade-out, so we use instant exit here
+            composable(
+                route = "splash",
+                exitTransition = { fadeOut(tween(0)) }
+            ) {
+                SplashScreen(
+                    onComplete = {
+                        navController.navigate("home") {
+                            popUpTo("splash") { inclusive = true }
+                        }
+                    }
+                )
+            }
+
             composable("home") {
                 val libraryViewModel: LibraryViewModel = hiltViewModel()
                 LibraryScreen(
@@ -81,9 +103,11 @@ fun NavGraph(playerViewModel: PlayerViewModel) {
                     onNavigateToPlayer = { navController.navigate("player") }
                 )
             }
+
             composable("settings") {
                 SettingsScreen(bottomPadding = padding)
             }
+
             composable("player") {
                 PlayerScreen(
                     playerViewModel = playerViewModel,

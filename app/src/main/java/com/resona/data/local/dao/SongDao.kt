@@ -15,6 +15,7 @@ interface SongDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(songs: List<SongEntity>)
 
-    @Query("DELETE FROM songs")
-    suspend fun deleteAll()
+    // Only wipe auto-scanned songs; manual additions survive across syncs
+    @Query("DELETE FROM songs WHERE isManual = 0")
+    suspend fun deleteAutoSongs()
 }

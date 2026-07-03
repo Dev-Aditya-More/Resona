@@ -29,11 +29,17 @@ class PlayerViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
+    enum class RepeatMode { OFF, ALL, ONE }
+
     data class PlayerState(
         val currentSong: Song? = null,
         val isPlaying: Boolean = false,
         val progress: Float = 0f,
-        val currentPosition: Long = 0L
+        val currentPosition: Long = 0L,
+        val shuffleEnabled: Boolean = false,
+        val repeatMode: RepeatMode = RepeatMode.OFF,
+        val queue: List<Song> = emptyList(),
+        val currentQueueIndex: Int = 0
     )
 
     private val _state = MutableStateFlow(PlayerState())
@@ -49,9 +55,22 @@ class PlayerViewModel @Inject constructor(
             if (isPlaying) startProgressTicker() else progressJob?.cancel()
         }
 
+        override fun onShuffleModeEnabledChanged(shuffleEnabled: Boolean) {
+            _state.update { it.copy(shuffleEnabled = shuffleEnabled) }
+        }
+
+        override fun onRepeatModeChanged(repeatMode: Int) {
+            val mode = when (repeatMode) {
+                Player.REPEAT_MODE_ONE -> RepeatMode.ONE
+                Player.REPEAT_MODE_ALL -> RepeatMode.ALL
+                else -> RepeatMode.OFF
+            }
+            _state.update { it.copy(repeatMode = mode) }
+        }
+
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val index = mediaController?.currentMediaItemIndex ?: return
-            _state.update { it.copy(currentSong = songQueue.getOrNull(index)) }
+            _state.update { it.copy(currentSong = songQueue.getOrNull(index), currentQueueIndex = index) }
         }
     }
 
@@ -89,7 +108,14 @@ class PlayerViewModel @Inject constructor(
         controller.setMediaItems(items, startIndex, C.TIME_UNSET)
         controller.prepare()
         controller.play()
-        _state.update { it.copy(currentSong = songs.getOrNull(startIndex), isPlaying = true) }
+        _state.update {
+            it.copy(
+                currentSong = songs.getOrNull(startIndex),
+                isPlaying = true,
+                queue = songs,
+                currentQueueIndex = startIndex
+            )
+        }
         startProgressTicker()
     }
 
@@ -98,14 +124,44 @@ class PlayerViewModel @Inject constructor(
         if (controller.isPlaying) controller.pause() else controller.play()
     }
 
+    fun toggleShuffle() {
+        val controller = mediaController ?: return
+        controller.shuffleModeEnabled = !controller.shuffleModeEnabled
+    }
+
+    fun cycleRepeatMode() {
+        val controller = mediaController ?: return
+        val next = when (_state.value.repeatMode) {
+            RepeatMode.OFF -> RepeatMode.ALL
+            RepeatMode.ALL -> RepeatMode.ONE
+            RepeatMode.ONE -> RepeatMode.OFF
+        }
+        controller.repeatMode = when (next) {
+            RepeatMode.OFF -> Player.REPEAT_MODE_OFF
+            RepeatMode.ALL -> Player.REPEAT_MODE_ALL
+            RepeatMode.ONE -> Player.REPEAT_MODE_ONE
+        }
+    }
+
     fun skipNext() { mediaController?.seekToNextMediaItem() }
 
-    fun skipPrevious() { mediaController?.seekToPreviousMediaItem() }
+    fun skipPrevious() {
+        val controller = mediaController ?: return
+        if (controller.currentPosition > 3_000L) {
+            controller.seekTo(0L)
+        } else {
+            controller.seekToPreviousMediaItem()
+        }
+    }
 
     fun seekTo(fraction: Float) {
         val controller = mediaController ?: return
         val duration = controller.duration
         if (duration > 0) controller.seekTo((fraction * duration).toLong())
+    }
+
+    fun jumpToQueueItem(index: Int) {
+        mediaController?.seekTo(index, 0L)
     }
 
     private fun startProgressTicker() {
