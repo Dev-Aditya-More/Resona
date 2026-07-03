@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,12 +33,13 @@ import com.resona.presentation.library.LibraryScreen
 import com.resona.presentation.library.LibraryViewModel
 import com.resona.presentation.player.PlayerScreen
 import com.resona.presentation.player.PlayerViewModel
+import com.resona.presentation.settings.AboutScreen
 import com.resona.presentation.settings.SettingsScreen
 import com.resona.presentation.splash.SplashScreen
 
-private sealed class BottomTab(val route: String, val label: String, val icon: ImageVector) {
-    object Home : BottomTab("home", "Home", Icons.Filled.Home)
-    object Settings : BottomTab("settings", "Settings", Icons.Filled.Settings)
+private sealed class BottomTab(val route: Any, val label: String, val icon: ImageVector) {
+    object Home : BottomTab(com.resona.navigation.Home, "Home", Icons.Filled.Home)
+    object Settings : BottomTab(com.resona.navigation.Settings, "Settings", Icons.Filled.Settings)
 }
 
 private val bottomTabs = listOf(BottomTab.Home, BottomTab.Settings)
@@ -45,10 +48,11 @@ private val bottomTabs = listOf(BottomTab.Home, BottomTab.Settings)
 fun NavGraph(playerViewModel: PlayerViewModel) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route
+    val destination = backStackEntry?.destination
     val playerState by playerViewModel.state.collectAsStateWithLifecycle()
 
-    val showChrome = currentRoute == "home" || currentRoute == "settings"
+    val showChrome = destination?.hasRoute(com.resona.navigation.Home::class) == true || 
+                     destination?.hasRoute(com.resona.navigation.Settings::class) == true
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -61,12 +65,12 @@ fun NavGraph(playerViewModel: PlayerViewModel) {
                             state = playerState,
                             onPlayPause = playerViewModel::togglePlayPause,
                             onSkipNext = playerViewModel::skipNext,
-                            onClick = { navController.navigate("player") }
+                            onClick = { navController.navigate(Player) }
                         )
                     }
                     ResonaBottomBar(
-                        currentRoute = currentRoute,
-                        navController = navController
+                        navController = navController,
+                        destination = destination
                     )
                 }
             }
@@ -74,41 +78,47 @@ fun NavGraph(playerViewModel: PlayerViewModel) {
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = "splash",
+            startDestination = Splash,
             enterTransition = { fadeIn(tween(300)) },
             exitTransition = { fadeOut(tween(300)) },
             popEnterTransition = { fadeIn(tween(300)) },
             popExitTransition = { fadeOut(tween(300)) },
         ) {
             // Splash — manages its own fade-out, so we use instant exit here
-            composable(
-                route = "splash",
+            composable<Splash>(
                 exitTransition = { fadeOut(tween(0)) }
             ) {
                 SplashScreen(
                     onComplete = {
-                        navController.navigate("home") {
-                            popUpTo("splash") { inclusive = true }
+                        navController.navigate(com.resona.navigation.Home) {
+                            popUpTo(Splash) { inclusive = true }
                         }
                     }
                 )
             }
 
-            composable("home") {
+            composable<com.resona.navigation.Home> {
                 val libraryViewModel: LibraryViewModel = hiltViewModel()
                 LibraryScreen(
                     libraryViewModel = libraryViewModel,
                     playerViewModel = playerViewModel,
                     bottomPadding = padding,
-                    onNavigateToPlayer = { navController.navigate("player") }
+                    onNavigateToPlayer = { navController.navigate(Player) }
                 )
             }
 
-            composable("settings") {
-                SettingsScreen(bottomPadding = padding)
+            composable<com.resona.navigation.Settings> {
+                SettingsScreen(
+                    bottomPadding = padding,
+                    onNavigateToAbout = { navController.navigate(About) }
+                )
             }
 
-            composable("player") {
+            composable<About> {
+                AboutScreen(onNavigateBack = { navController.popBackStack() })
+            }
+
+            composable<Player> {
                 PlayerScreen(
                     playerViewModel = playerViewModel,
                     onNavigateBack = { navController.popBackStack() }
@@ -119,13 +129,13 @@ fun NavGraph(playerViewModel: PlayerViewModel) {
 }
 
 @Composable
-private fun ResonaBottomBar(currentRoute: String?, navController: NavController) {
+private fun ResonaBottomBar(navController: NavController, destination: NavDestination?) {
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surfaceVariant,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         bottomTabs.forEach { tab ->
-            val selected = currentRoute == tab.route
+            val selected = destination?.hasRoute(tab.route::class) == true
             NavigationBarItem(
                 selected = selected,
                 onClick = {

@@ -7,9 +7,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.resona.navigation.NavGraph
 import com.resona.presentation.player.PlayerViewModel
+import com.resona.presentation.settings.SettingsViewModel
 import com.resona.ui.theme.ResonaTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -25,7 +28,9 @@ class MainActivity : ComponentActivity() {
         requestAudioPermissions()
         enableEdgeToEdge()
         setContent {
-            ResonaTheme {
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            val accentColor by settingsViewModel.accentColor.collectAsStateWithLifecycle()
+            ResonaTheme(accent = accentColor) {
                 val playerViewModel: PlayerViewModel = hiltViewModel()
                 NavGraph(playerViewModel = playerViewModel)
             }

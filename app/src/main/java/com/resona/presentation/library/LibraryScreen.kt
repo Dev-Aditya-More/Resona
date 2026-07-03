@@ -31,12 +31,15 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -62,12 +65,23 @@ fun LibraryScreen(
     val libraryState by libraryViewModel.state.collectAsStateWithLifecycle()
     val playerState by playerViewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             if (libraryViewModel.state.value is LibraryViewModel.State.NoPermission) {
                 libraryViewModel.loadSongs()
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        libraryViewModel.importResult.collect { result ->
+            if (result.duplicates > 0) {
+                val skippedText = if (result.duplicates == 1) "1 duplicate" else "${result.duplicates} duplicates"
+                val addedText = if (result.added > 0) "Added ${result.added} songs, skipped $skippedText" else "Skipped $skippedText already in your library"
+                snackbarHostState.showSnackbar(addedText)
             }
         }
     }
@@ -151,7 +165,8 @@ fun LibraryScreen(
                             Text(
                                 text = "Add music files to your device to get started,\nor tap + to pick files manually",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
                             )
                         }
                     }
@@ -193,6 +208,13 @@ fun LibraryScreen(
         ) {
             Icon(imageVector = Icons.Default.Add, contentDescription = "Add music files")
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = bottomPadding.calculateBottomPadding() + 16.dp)
+        )
     }
 }
 

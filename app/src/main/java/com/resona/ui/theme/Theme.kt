@@ -4,24 +4,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
-private val ResonaDarkColorScheme = darkColorScheme(
-    primary = Crimson,
-    onPrimary = OnSurfaceDark,
-    secondary = CrimsonBright,
-    onSecondary = OnSurfaceDark,
-    background = BackgroundDark,
+private fun colorSchemeFor(accent: AccentColor) = darkColorScheme(
+    primary = accent.primary,
+    onPrimary = accent.onPrimary,
+    secondary = accent.secondary,
+    onSecondary = accent.onPrimary,
+    background = accent.background,
     onBackground = OnSurfaceDark,
-    surface = SurfaceDark,
+    surface = accent.surface,
     onSurface = OnSurfaceDark,
-    surfaceVariant = SurfaceVariantDark,
-    onSurfaceVariant = OnSurfaceMuted,
-    outline = OutlineDark,
+    surfaceVariant = accent.surfaceVariant,
+    onSurfaceVariant = accent.onSurfaceVariant,
+    outline = accent.outline,
 )
 
 @Composable
-fun ResonaTheme(content: @Composable () -> Unit) {
+fun ResonaTheme(accent: AccentColor = AccentColor.Default, content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = ResonaDarkColorScheme,
+        colorScheme = colorSchemeFor(accent),
         typography = Typography,
         content = content
     )

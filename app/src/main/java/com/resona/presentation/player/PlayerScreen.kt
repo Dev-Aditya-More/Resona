@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.resona.domain.model.Song
+import com.resona.presentation.common.ResonanceRings
 import com.resona.presentation.common.SongArtwork
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -106,12 +107,18 @@ fun PlayerScreen(
 
         Spacer(Modifier.height(28.dp))
 
-        // Album art
-        SongArtwork(
-            uri = state.currentSong?.albumArtUri,
-            modifier = Modifier.size(300.dp),
-            cornerRadius = 20.dp
-        )
+        // Album art with a resonance ripple while playing
+        Box(contentAlignment = Alignment.Center) {
+            ResonanceRings(
+                isPlaying = state.isPlaying,
+                modifier = Modifier.size(300.dp)
+            )
+            SongArtwork(
+                uri = state.currentSong?.albumArtUri,
+                modifier = Modifier.size(300.dp),
+                cornerRadius = 20.dp
+            )
+        }
 
         Spacer(Modifier.height(36.dp))
 

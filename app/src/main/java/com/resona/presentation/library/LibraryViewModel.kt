@@ -8,11 +8,14 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.resona.data.repository.ManualImportResult
 import com.resona.data.repository.SongRepository
 import com.resona.domain.model.Song
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -33,6 +36,9 @@ class LibraryViewModel @Inject constructor(
 
     private val _state = MutableStateFlow<State>(State.Loading)
     val state: StateFlow<State> = _state.asStateFlow()
+
+    private val _importResult = MutableSharedFlow<ManualImportResult>(extraBufferCapacity = 1)
+    val importResult: SharedFlow<ManualImportResult> = _importResult
 
     init {
         loadSongs()
@@ -63,8 +69,9 @@ class LibraryViewModel @Inject constructor(
 
     fun addManualSongs(uris: List<Uri>) {
         viewModelScope.launch {
-            repository.addManualSongs(uris)
+            val result = repository.addManualSongs(uris)
             // Room Flow emits automatically — no manual refresh needed
+            _importResult.emit(result)
         }
     }
 }

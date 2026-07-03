@@ -32,18 +32,35 @@ class SongRepository @Inject constructor(
         songDao.insertAll(songs.map { it.toEntity() })
     }
 
-    suspend fun addManualSongs(uris: List<Uri>) = withContext(Dispatchers.IO) {
+    suspend fun addManualSongs(uris: List<Uri>): ManualImportResult = withContext(Dispatchers.IO) {
+        val existing = songDao.getAllSongsOnce()
+        val existingUris = existing.mapTo(mutableSetOf()) { it.uri }
+        val seenFingerprints = existing.mapTo(mutableSetOf()) { it.fingerprint() }
+
+        var duplicates = 0
         val songs = uris.mapNotNull { uri ->
+            if (uri.toString() in existingUris) {
+                duplicates++
+                return@mapNotNull null
+            }
             runCatching {
                 context.contentResolver.takePersistableUriPermission(
                     uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
                 extractMetadata(uri)
             }.getOrNull()
+        }.filter { song ->
+            // Catches the same track already present under a different URI (e.g. picked
+            // manually after being found by the MediaStore scan).
+            val isDuplicate = !seenFingerprints.add(song.fingerprint())
+            if (isDuplicate) duplicates++
+            !isDuplicate
         }
+
         if (songs.isNotEmpty()) {
             songDao.insertAll(songs.map { it.toEntity(isManual = true) })
         }
+        ManualImportResult(added = songs.size, duplicates = duplicates)
     }
 
     private fun extractMetadata(uri: Uri): Song {
@@ -71,3 +88,8 @@ class SongRepository @Inject constructor(
         }
     }
 }
+
+data class ManualImportResult(val added: Int, val duplicates: Int)
+
+private fun Song.fingerprint() = "${title.trim().lowercase()}|${artist.trim().lowercase()}|$duration"
+private fun SongEntity.fingerprint() = "${title.trim().lowercase()}|${artist.trim().lowercase()}|$duration"
